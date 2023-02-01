@@ -2,6 +2,7 @@ package com.example.digitalbanking.entities;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,6 +13,7 @@ import java.util.List;
 
 @Entity
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
@@ -29,6 +31,7 @@ public class BankAccount {
     private AccountStatus status;
     @ManyToOne
     private Customer customer;
+    private String type;
     @OneToMany(mappedBy = "bankAccount", cascade = CascadeType.ALL)
     private List<AccountOperation> accountOperations = new ArrayList<>();
 

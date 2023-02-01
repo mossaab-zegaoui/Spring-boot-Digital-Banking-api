@@ -8,17 +8,21 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 
 @SpringBootApplication
+@Configuration
+@EnableJpaRepositories(basePackages = {"com.example.digitalbanking.repositories"})
 public class DigitalBanKingApplication {
     public static void main(String[] args) {
         SpringApplication.run(DigitalBanKingApplication.class, args);
     }
 
-    @Bean
+    @Bean(name = "entityManagerFactory")
     CommandLineRunner commandLineRunner(BankService bankService) {
         return args -> {
             Stream.of("Ahmed", "Amine", "Mossaab").forEach(name -> {

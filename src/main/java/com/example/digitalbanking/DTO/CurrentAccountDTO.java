@@ -1,25 +1,21 @@
 package com.example.digitalbanking.DTO;
 
-
 import com.example.digitalbanking.entities.AccountStatus;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CurrentAccountDTO extends BankAccountDTO {
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-    private BigDecimal balance;
-    private LocalDateTime createdAt;
-    private String currency;
-    @Enumerated(EnumType.STRING)
-    private AccountStatus status;
-    private CustomerDTO customerDTO;
     private BigDecimal overDraft;
 }

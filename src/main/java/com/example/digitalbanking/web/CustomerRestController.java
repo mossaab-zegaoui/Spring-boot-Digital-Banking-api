@@ -2,6 +2,7 @@ package com.example.digitalbanking.web;
 
 import com.example.digitalbanking.DTO.CustomerDTO;
 import com.example.digitalbanking.services.BankService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,30 +16,32 @@ public class CustomerRestController {
         this.bankService = bankService;
     }
 
-    @GetMapping("/")
+    @GetMapping
     public List<CustomerDTO> customers() {
         return bankService.getAllCustomers();
     }
 
     @GetMapping("/{id}")
-    public CustomerDTO getCustomer(@PathVariable Long id) {
-        return bankService.getCustomerDTO(id);
+    public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Long id) {
+        return ResponseEntity.ok(bankService.getCustomerById(id));
     }
 
-    @PostMapping("/")
-    public CustomerDTO saveCustomer(@RequestBody CustomerDTO customerDTO) {
-        return bankService.saveCustomer(customerDTO);
+    @PostMapping
+    public ResponseEntity<CustomerDTO> saveCustomer(@RequestBody CustomerDTO customerDTO) {
+        return ResponseEntity.ok(bankService.saveCustomer(customerDTO));
     }
 
     @PutMapping("/{id}")
-    public CustomerDTO updateCustomer(@PathVariable Long id, @RequestBody CustomerDTO customerDTO) {
+    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable Long id,
+                                                      @RequestBody CustomerDTO customerDTO) {
         customerDTO.setId(id);
-        return bankService.updateCustomer(customerDTO);
+        return ResponseEntity.ok(bankService.updateCustomer(customerDTO));
     }
 
     @DeleteMapping("/{id}")
     public void deleteCustomer(@PathVariable Long id) {
         bankService.deleteCustomer(id);
     }
+
 
 }

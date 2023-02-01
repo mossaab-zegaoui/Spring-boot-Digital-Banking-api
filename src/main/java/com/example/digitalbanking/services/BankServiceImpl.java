@@ -1,9 +1,18 @@
 package com.example.digitalbanking.services;
 
-import com.example.digitalbanking.DTO.*;
-import com.example.digitalbanking.entities.*;
-import com.example.digitalbanking.exceptions.BankAccountNotFoundException;
-import com.example.digitalbanking.exceptions.CustomerNotFoundException;
+import com.example.digitalbanking.DTO.AccountHistoryDTO;
+import com.example.digitalbanking.DTO.AccountOperationDTO;
+import com.example.digitalbanking.DTO.BankAccountDTO;
+import com.example.digitalbanking.DTO.CurrentAccountDTO;
+import com.example.digitalbanking.DTO.CustomerDTO;
+import com.example.digitalbanking.DTO.SavingAccountDTO;
+import com.example.digitalbanking.entities.AccountOperation;
+import com.example.digitalbanking.entities.BankAccount;
+import com.example.digitalbanking.entities.CurrentAccount;
+import com.example.digitalbanking.entities.Customer;
+import com.example.digitalbanking.entities.OperationType;
+import com.example.digitalbanking.entities.SavingAccount;
+import com.example.digitalbanking.exceptions.NotFoundException;
 import com.example.digitalbanking.exceptions.InsufficientBalanceException;
 import com.example.digitalbanking.mappers.AccountOperationDTOMapper;
 import com.example.digitalbanking.mappers.BankAccountDTOMapper;
@@ -21,6 +30,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
 
 @Service
 @Transactional
@@ -54,19 +64,18 @@ public class BankServiceImpl implements BankService {
                 .map(customerDTOMapper::toCustomerDTO)
                 .collect(Collectors.toList());
         return customers;
-
     }
 
     @Override
-    public CustomerDTO getCustomerDTO(Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new CustomerNotFoundException("customer " + customerId + " NOT FOUND"));
+    public CustomerDTO getCustomerById(Long customerId) {
+        Customer customer = customerRepository
+                .findById(customerId)
+                .orElseThrow(() -> new NotFoundException("customer " + customerId + " NOT FOUND"));
         return customerDTOMapper.toCustomerDTO(customer);
     }
 
     @Override
     public CustomerDTO saveCustomer(CustomerDTO customerDTO) {
-
         Customer savedCustomer = customerDTOMapper.toCustomer(customerDTO);
         customerRepository.save(savedCustomer);
         return customerDTOMapper.toCustomerDTO(savedCustomer);
@@ -74,10 +83,9 @@ public class BankServiceImpl implements BankService {
 
     @Override
     public CustomerDTO updateCustomer(CustomerDTO customerDTO) {
-
-        Customer savedCustomer = customerDTOMapper.toCustomer(customerDTO);
-        customerRepository.save(savedCustomer);
-        return customerDTOMapper.toCustomerDTO(savedCustomer);
+        Customer customer = customerDTOMapper.toCustomer(customerDTO);
+        customerRepository.save(customer);
+        return customerDTOMapper.toCustomerDTO(customer);
     }
 
     @Override
@@ -86,27 +94,31 @@ public class BankServiceImpl implements BankService {
     }
 
     @Override
-    public BankAccountDTO getBankAccountDTO(String id) {
+    public BankAccountDTO getBankAccountDTO(String bankAccountId) {
         BankAccount bankAccount = bankAccountRepository
-                .findById(id)
-                .orElseThrow(() -> new BankAccountNotFoundException("Bank Account: " + id + " NOT FOUND"));
+                .findById(bankAccountId)
+                .orElseThrow(() -> new NotFoundException("Bank Account: " + bankAccountId + " NOT FOUND"));
         if (bankAccount instanceof CurrentAccount)
             return bankAccountDTOMapper.toCurrentBankAccountDTO((CurrentAccount) bankAccount);
         else
             return bankAccountDTOMapper.toSavingBankAccountDTO((SavingAccount) bankAccount);
-
     }
 
     @Override
     public CurrentAccountDTO saveCurrentBankAccount(BigDecimal balance, String type, Long customerId, BigDecimal overDraft) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new CustomerNotFoundException("customer " + customerId + " NOT FOUND"));
+        Customer customer = customerRepository
+                .findById(customerId)
+                .orElseThrow(() -> new NotFoundException("customer " + customerId + " NOT FOUND"));
         CurrentAccount currentAccount = new CurrentAccount();
         currentAccount.setBalance((balance.setScale(2, RoundingMode.HALF_UP)));
         currentAccount.setOverDraft(overDraft);
         currentAccount.setCreatedAt(LocalDateTime.now());
+        currentAccount.setType(
+                currentAccount.getClass()
+                        .getSimpleName());
         currentAccount.setCustomer(customer);
         bankAccountRepository.save(currentAccount);
+
         return bankAccountDTOMapper.toCurrentBankAccountDTO(currentAccount);
     }
 
@@ -114,47 +126,60 @@ public class BankServiceImpl implements BankService {
     public SavingAccountDTO saveSavingBankAccount(BigDecimal balance, String type, Long customerId, BigDecimal interestRate) {
         Customer customer = customerRepository
                 .findById(customerId)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer: " + customerId + " NOT FOUND"));
+                .orElseThrow(() -> new NotFoundException("Customer: " + customerId + " NOT FOUND"));
         SavingAccount savingAccount = new SavingAccount();
         savingAccount.setBalance((balance.setScale(2, RoundingMode.HALF_UP)));
         savingAccount.setInterestRate(interestRate);
         savingAccount.setCreatedAt(LocalDateTime.now());
+        savingAccount.setType(
+                savingAccount.getClass()
+                        .getSimpleName());
         savingAccount.setCustomer(customer);
         bankAccountRepository.save(savingAccount);
+
         return bankAccountDTOMapper.toSavingBankAccountDTO(savingAccount);
     }
 
     @Override
-    public BankAccount getBankAccount(String id) {
+    public BankAccount getBankAccountById(String id) {
         BankAccount bankAccount = bankAccountRepository
                 .findById(id)
-                .orElseThrow(() -> new BankAccountNotFoundException("bank account: " + id + " NOT FOUND"));
+                .orElseThrow(() -> new NotFoundException("bank account: " + id + " NOT FOUND"));
         return bankAccount;
     }
 
-
     @Override
     public void withdraw(String accountId, BigDecimal amount, String description) {
-        BankAccount bankAccount = getBankAccount(accountId);
-        if (bankAccount.getBalance().compareTo(amount) == -1)
+        BankAccountDTO bankAccountDTO = getBankAccountDTO(accountId);
+        if (bankAccountDTO.getBalance().compareTo(amount) == -1)
             throw new InsufficientBalanceException("Balance insufficient ");
         else {
             AccountOperation accountOperation = new AccountOperation();
             accountOperation.setType(OperationType.WITHDRAW);
-            accountOperation.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+            accountOperation.setAmount(
+                    amount.setScale(
+                            2,
+                            RoundingMode.HALF_UP));
             accountOperation.setDate(LocalDateTime.now());
             accountOperation.setDescription(description);
-            accountOperation.setBankAccount(bankAccount);
+            if (bankAccountDTO.getType().equals("SavingAccount"))
+                accountOperation.setBankAccount(
+                        bankAccountDTOMapper.toSavingBankAccount(
+                                (SavingAccountDTO) bankAccountDTO));
+            else
+                accountOperation.setBankAccount(
+                        bankAccountDTOMapper.toCurrentBankAccount(
+                                (CurrentAccountDTO) bankAccountDTO));
             accountOperationRepository.save(accountOperation);
 //
-            bankAccount.setBalance(bankAccount.getBalance().subtract(amount));
-            bankAccountRepository.save(bankAccount);
+            bankAccountDTO.setBalance(bankAccountDTO.getBalance().subtract(amount));
+            bankAccountRepository.save(bankAccountDTOMapper.toBankAccount(bankAccountDTO));
         }
     }
 
     @Override
     public void deposit(String accountId, BigDecimal amount, String description) {
-        BankAccount bankAccount = getBankAccount(accountId);
+        BankAccount bankAccount = getBankAccountById(accountId);
         AccountOperation accountOperation = new AccountOperation();
         accountOperation.setType(OperationType.DEPOSIT);
         accountOperation.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
@@ -169,40 +194,51 @@ public class BankServiceImpl implements BankService {
 
     @Override
     public void transfer(String accountIdSource, String accountIdDestination, BigDecimal amount) {
-        deposit(accountIdSource, amount, "Transfer money to : " + accountIdDestination);
-        withdraw(accountIdDestination, amount, "Transfer money from: " + accountIdSource);
+        deposit(accountIdSource,
+                amount,
+                "Transfer money to : " + accountIdDestination);
+        withdraw(accountIdDestination,
+                amount,
+                "Transfer money from: " + accountIdSource);
     }
 
     @Override
     public List<BankAccountDTO> getAllBankAccounts() {
-
-        List<BankAccountDTO> bankAccountDTOS = bankAccountRepository.findAll().stream().map(bankAccount -> {
-            if (bankAccount instanceof CurrentAccount)
-                return bankAccountDTOMapper.toCurrentBankAccountDTO((CurrentAccount) bankAccount);
-            else
-                return bankAccountDTOMapper.toSavingBankAccountDTO((SavingAccount) bankAccount);
-        }).collect(Collectors.toList());
-
+        List<BankAccountDTO> bankAccountDTOS = bankAccountRepository
+                .findAll()
+                .stream()
+                .map(bankAccount -> {
+                    if (bankAccount instanceof CurrentAccount)
+                        return bankAccountDTOMapper.toCurrentBankAccountDTO((CurrentAccount) bankAccount);
+                    else
+                        return bankAccountDTOMapper.toSavingBankAccountDTO((SavingAccount) bankAccount);
+                }).collect(Collectors.toList());
         return bankAccountDTOS;
     }
 
     @Override
+    public List<AccountOperationDTO> getAccountOperationsByBankAccountId(String accountId) {
+        List<AccountOperation> accountOperations = accountOperationRepository
+                .findByBankAccountId(accountId);
+        return accountOperationDTOMapper.toAccountOperationDTOList((Page<AccountOperation>) accountOperations);
+    }
+
+    @Override
     public AccountHistoryDTO getAccountOperationHistory(String accountId, int page, int size) {
-        BankAccount bankAccount = getBankAccount(accountId);
-        Page<AccountOperation> accountOperations = accountOperationRepository.findByBankAccountId(accountId, PageRequest.of(page, size));
+        BankAccount bankAccount = getBankAccountById(accountId);
+        Page<AccountOperation> accountOperations = accountOperationRepository
+                .findByBankAccountId(
+                        accountId,
+                        PageRequest.of(page, size));
         AccountHistoryDTO accountHistoryDTO = new AccountHistoryDTO();
-        List<AccountOperationDTO> accountOperationDTOS =
-                accountOperations
-                        .getContent()
-                        .stream()
-                        .map(accountOperationDTOMapper::toAccountOperationDTO)
-                        .collect(Collectors.toList());
+        List<AccountOperationDTO> accountOperationDTOS = accountOperationDTOMapper.toAccountOperationDTOList(accountOperations);
         accountHistoryDTO.setAccountOperationDTOS(accountOperationDTOS);
         accountHistoryDTO.setAccountId(bankAccount.getId());
         accountHistoryDTO.setBalance(bankAccount.getBalance());
         accountHistoryDTO.setCurrentPage(page);
         accountHistoryDTO.setPageSize(size);
         accountHistoryDTO.setTotalPages(accountOperations.getTotalPages());
+
         return accountHistoryDTO;
     }
 }
