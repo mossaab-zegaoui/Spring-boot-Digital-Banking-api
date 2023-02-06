@@ -3,6 +3,10 @@ package com.example.digitalbanking;
 import com.example.digitalbanking.DTO.CurrentAccountDTO;
 import com.example.digitalbanking.DTO.CustomerDTO;
 import com.example.digitalbanking.DTO.SavingAccountDTO;
+import com.example.digitalbanking.entities.Role;
+import com.example.digitalbanking.entities.UserEntity;
+import com.example.digitalbanking.repositories.RoleRepository;
+import com.example.digitalbanking.services.AuthenticationService;
 import com.example.digitalbanking.services.BankService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -18,12 +22,19 @@ import java.util.stream.Stream;
 @Configuration
 @EnableJpaRepositories(basePackages = {"com.example.digitalbanking.repositories"})
 public class DigitalBanKingApplication {
+    private final RoleRepository roleRepository;
+
+    public DigitalBanKingApplication(RoleRepository roleRepository) {
+        this.roleRepository = roleRepository;
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(DigitalBanKingApplication.class, args);
     }
 
-    @Bean(name = "entityManagerFactory")
-    CommandLineRunner commandLineRunner(BankService bankService) {
+    @Bean
+    CommandLineRunner commandLineRunner(BankService bankService,
+                                        AuthenticationService authenticationService) {
         return args -> {
             Stream.of("Ahmed", "Amine", "Mossaab").forEach(name -> {
                 CustomerDTO customer = new CustomerDTO();
@@ -59,6 +70,13 @@ public class DigitalBanKingApplication {
                                 BigDecimal.valueOf(Math.random() * 1000 + 500),
                                 "WITHDRAW");
                     });
+            authenticationService.saveUser(new UserEntity(null, "user", "user123", null));
+            authenticationService.saveUser(new UserEntity(null, "admin", "admin123", null));
+            authenticationService.saveRole(new Role(null, "ADMIN"));
+            authenticationService.saveRole(new Role(null, "USER"));
+            authenticationService.assignRoleToUSer("ADMIN", "admin");
+            authenticationService.assignRoleToUSer("USER", "user");
+
         };
     }
 }
