@@ -70,6 +70,7 @@ public class DigitalBanKingApplication {
                                 BigDecimal.valueOf(Math.random() * 1000 + 500),
                                 "WITHDRAW");
                     });
+//            Create fake users
             authenticationService.saveUser(new UserEntity(null, "user", "user123", null));
             authenticationService.saveUser(new UserEntity(null, "admin", "admin123", null));
             authenticationService.saveRole(new Role(null, "ADMIN"));
